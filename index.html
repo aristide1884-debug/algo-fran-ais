@@ -1,0 +1,365 @@
+
+
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Algo Français</title>
+
+<style>
+
+*{box-sizing:border-box}
+
+body{margin:0;padding:18px;background:#101827;color:white;font-family:Arial}
+
+h1{color:#62a5ff;text-align:center}
+
+p{color:#bbc5d4;text-align:center}
+
+textarea{width:100%;height:300px;background:#080e19;color:#b8e4ff;border:1px solid #40516a;border-radius:10px;padding:14px;font:15px monospace;resize:vertical}
+
+button{padding:13px;border:0;border-radius:9px;background:#2879e8;color:white;font-weight:bold;margin:8px 3px}
+
+#result{background:#080e19;border:1px solid #40516a;border-radius:10px;padding:14px;min-height:100px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+label{display:block;margin:18px 0 8px}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Algo Français</h1>
+
+<p>Écris et exécute tes algorithmes</p>
+
+<label>Mon algorithme :</label>
+
+<textarea id="code" spellcheck="false">Algorithme Addition
+
+Variables a, b, somme : entier
+
+Début
+
+ Lire(a)
+
+ Lire(b)
+
+ somme <- a + b
+
+ Ecrire("La somme est : ", somme)
+
+Fin</textarea>
+
+<button onclick="executer()">▶ Exécuter</button>
+
+<button onclick="exemple()">Exemple</button>
+
+<button onclick="effacer()">Effacer</button>
+
+<label>Console de résultats :</label>
+
+<div id="result">Les résultats apparaîtront ici...</div>
+
+<script>
+
+function exemple(){
+
+document.getElementById("code").value =
+
+`Algorithme Test
+
+Variables a, b, somme : entier
+
+Début
+
+ Lire(a)
+
+ Lire(b)
+
+ somme <- a + b
+
+ Ecrire("La somme est : ", somme)
+
+ Si somme > 10 Alors
+
+  Ecrire("La somme est supérieure à 10")
+
+ Sinon
+
+  Ecrire("La somme est inférieure ou égale à 10")
+
+ FinSi
+
+Fin`;
+
+}
+
+function effacer(){
+
+document.getElementById("result").textContent="";
+
+}
+
+function expression(s,v){
+
+s=s.trim()
+
+.replace(/<>/g,"!=")
+
+.replace(/\bET\b/gi,"&&")
+
+.replace(/\bOU\b/gi,"||")
+
+.replace(/\bNON\b/gi,"!")
+
+.replace(/\bVRAI\b/gi,"true")
+
+.replace(/\bFAUX\b/gi,"false")
+
+.replace(/\bMOD\b/gi,"%")
+
+.replace(/\^/g,"**");
+
+s=s.replace(/(?<![<>=!])=(?!=)/g,"==");
+
+return Function(...Object.keys(v),"return ("+s+")")(...Object.values(v));
+
+}
+
+function decouper(s){
+
+let r=[],part="",quote=false;
+
+for(let c of s){
+
+if(c==='"')quote=!quote;
+
+if(c===","&&!quote){r.push(part.trim());part=""}
+
+else part+=c;
+
+}
+
+r.push(part.trim());
+
+return r;
+
+}
+
+async function executer(){
+
+let sortie=document.getElementById("result");
+
+sortie.textContent="";
+
+let lignes=document.getElementById("code").value
+
+.split("\n").map(x=>x.trim())
+
+.filter(x=>x&&!x.startsWith("//"));
+
+let v={};
+
+function afficher(s){
+
+sortie.textContent+=s+"\n";
+
+}
+
+function trouver(fin,debut){
+
+let niveau=0;
+
+for(let i=debut;i<lignes.length;i++){
+
+let x=lignes[i].toLowerCase();
+
+if(x.startsWith(fin.debut))niveau++;
+
+if(x.startsWith(fin.fin)){
+
+niveau--;
+
+if(niveau===0)return i;
+
+}
+
+}
+
+return -1;
+
+}
+
+async function executerBloc(debut,fin){
+
+let i=debut;
+
+while(i<fin){
+
+let l=lignes[i];
+
+let bas=l.toLowerCase();
+
+if(/^(algorithme|variables?|début|debut|fin|constantes?)/i.test(l)){
+
+i++;continue;
+
+}
+
+if(/^si\s+/.test(bas)&&bas.includes("alors")){
+
+let finSi=trouver({debut:"si ",fin:"finsi"},i);
+
+if(finSi<0)throw Error("FinSi manquant");
+
+let sinon=lignes.findIndex((x,j)=>j>i&&j<finSi&&x.toLowerCase()==="sinon");
+
+let condition=l.replace(/^si\s+/i,"").replace(/\s+alors\s*$/i,"");
+
+if(expression(condition,v)){
+
+await executerBloc(i+1,sinon<0?finSi:sinon);
+
+}else if(sinon>=0){
+
+await executerBloc(sinon+1,finSi);
+
+}
+
+i=finSi+1;continue;
+
+}
+
+if(/^tantque\s+/.test(bas)){
+
+let f=trouver({debut:"tantque ",fin:"fintantque"},i);
+
+if(f<0)throw Error("FinTantQue manquant");
+
+let condition=l.replace(/^tantque\s+/i,"").replace(/\s+faire\s*$/i,"");
+
+let securite=0;
+
+while(expression(condition,v)){
+
+if(++securite>1000)throw Error("Boucle trop longue");
+
+await executerBloc(i+1,f);
+
+}
+
+i=f+1;continue;
+
+}
+
+if(/^pour\s+/.test(bas)){
+
+let f=trouver({debut:"pour ",fin:"finpour"},i);
+
+if(f<0)throw Error("FinPour manquant");
+
+let m=l.match(/^pour\s+(\w+)\s+(?:allant\s+)?de\s+(.+?)\s+à\s+(.+?)(?:\s+faire)?$/i);
+
+if(!m)throw Error("Syntaxe Pour non reconnue");
+
+let variable=m[1],a=Number(expression(m[2],v)),b=Number(expression(m[3],v));
+
+let securite=0;
+
+for(let n=a;n<=b;n++){
+
+if(++securite>1000)throw Error("Boucle trop longue");
+
+v[variable]=n;
+
+await executerBloc(i+1,f);
+
+}
+
+i=f+1;continue;
+
+}
+
+if(/^lire\s*\(/i.test(l)){
+
+let nom=l.match(/^lire\s*\(\s*(\w+)\s*\)/i)?.[1];
+
+if(!nom)throw Error("Syntaxe Lire incorrecte");
+
+let valeur=prompt("Entrez la valeur de "+nom+":");
+
+if(valeur===null)throw Error("Saisie annulée");
+
+v[nom]=Number.isNaN(Number(valeur))?valeur:Number(valeur);
+
+i++;continue;
+
+}
+
+if(/^ecrire\s*\(/i.test(l)){
+
+let contenu=l.replace(/^ecrire\s*\(/i,"").replace(/\)\s*;?$/,"");
+
+let valeurs=decouper(contenu).map(x=>{
+
+try{return expression(x,v)}catch(e){return x.replace(/^["']|["']$/g,"")}
+
+});
+
+afficher(valeurs.join(" "));
+
+i++;continue;
+
+}
+
+let m=l.match(/^([a-zA-Z_]\w*)\s*<-\s*(.+)$/);
+
+if(m){
+
+v[m[1]]=expression(m[2],v);
+
+i++;continue;
+
+}
+
+if(l.toLowerCase()==="sinon"||/^fin(si|pour|tantque)$/i.test(l)){
+
+i++;continue;
+
+}
+
+if(l.includes(":")||l===";"){i++;continue}
+
+throw Error("Instruction inconnue : "+l);
+
+}
+
+}
+
+try{
+
+await executerBloc(0,lignes.length);
+
+afficher("✓ Exécution terminée.");
+
+}catch(e){
+
+afficher("ERREUR : "+e.message);
+
+}
+
+}
+
+</script>
+
+</body>
+
+</html>
