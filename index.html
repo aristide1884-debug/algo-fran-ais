@@ -360,6 +360,22 @@ afficher("ERREUR : "+e.message);
 
 </script>
 
-</body>
+</body><script>
+
+if ("serviceWorker" in navigator) {
+
+  window.addEventListener("load", () => {
+
+    navigator.serviceWorker.register("./sw.js")
+
+      .then(() => console.log("Mode hors ligne activé"))
+
+      .catch(error => console.log(error));
+
+  });
+
+}
+
+</script>
 
 </html>
